@@ -1,10 +1,15 @@
 import os
 import time
-import read_data as rd
+import pandas as pd
+from geopy.distance import distance
+import data_read as rd
 import main as mi
-import file_operation as fo
+import file_operate as fo
 
 time0 = time.asctime()
+
+# earliest_time = '2016-02-29 23:55:00'
+# latest_time = '2016-03-31 23:59:59'
 
 max_day, max_hour, max_minute = 32, 24, 60  # max_day从1开始.
 
@@ -29,6 +34,9 @@ types_search = {'missing': 'data[data.isnull().values].drop_duplicates()',
                 'state': 'data[~data[types].isin([\'0\', \'1\', \'2\', \'3\', \'4\', \'5\', \'A\', \'V\'])].copy()',
                 'viaduct': 'data[~data[types].isin([\'0\', \'1\'])].copy()',
                 'brake': 'data[~data[types].isin([\'0\', \'1\'])].copy()',
+                # 'gps_time': 'data[data[types] > \'2016-03-31 23:59:59\'].copy()',
+                'gps_time': 'data[data[types] < \'2016-02-29 23:55:00\'].copy()',
+                'speed': 'data[data[types] > 180].copy()',
                 }
 types_drop = {'missing': 'data.dropna(inplace=True)',
               'duplication': 'data.drop_duplicates(inplace=True)',
@@ -39,6 +47,8 @@ types_drop = {'missing': 'data.dropna(inplace=True)',
               'state': 'data.drop(index=types_error.index, inplace=True)',
               'viaduct': 'data.drop(index=types_error.index, inplace=True)',
               'brake': 'data.drop(index=types_error.index, inplace=True)',
+              'gps_time': 'data.drop(index=types_error.index, inplace=True)',
+              'speed': 'data.drop(index=types_error.index, inplace=True)',
               }
 
 
@@ -123,10 +133,99 @@ def data_error_delete(types):
         x = df1.loc[y]
         data = rd.read_txt(day=x.day, hour=x.hour, minute=x.minute)
         types_error = eval(types_choice['search'])
+        print(types_error)
         if not types_error.empty:
             eval(types_choice['drop'])
-            # data.to_csv(rd.path_name(day=x.day, hour=x.hour, minute=x.minute), header=0, index=0, sep="|")
+            data.to_csv(rd.path_name(day=x.day, hour=x.hour, minute=x.minute), header=0, index=0, sep="|")
             del data
+
+
+# =========================================================================
+
+def _drift_judge(df):
+    """
+
+    :param df:
+    :return:
+    """
+    index_list = df.index.tolist()
+    for x in range(len(index_list)-1):
+        point_one = (float(df.loc[index_list[x], ['lat']].copy()), float(df.loc[index_list[x], ['lon']].copy()))
+        point_two = (float(df.loc[index_list[x+1], ['lat']].copy()), float(df.loc[index_list[x+1], ['lon']].copy()))
+        dis = distance(point_one, point_two).meters
+        time_gap = (pd.to_datetime(df.loc[index_list[x + 1], ['gps_time']]) -
+                    pd.to_datetime(df.loc[index_list[x], ['gps_time']])).dt.seconds
+        speed = dis/float(time_gap)
+        if speed > 180:
+            # print(speed)
+            df.loc[index_list[x]].to_csv('%s/drift_data.txt' % path_error_data, mode='a', header=0, index=0, sep="|")
+
+
+def _drift_error_core(data):
+    """
+
+    :param day:
+    :param hour:
+    :param minute:
+    :return:
+    """
+    try:
+
+        data.sort_values(['id', 'gps_time'], inplace=True)
+        data.drop_duplicates(['id', 'gps_time'], keep='first', inplace=True)
+        for ids, group in data.groupby('id'):
+            _drift_judge(group)
+
+    except Exception as result:
+        file = open('./log/drift_log.txt', 'a')
+        file.write('%s,%s\n' % (time0, result))
+        file.close()
+
+
+def _drift_error(day, hour, minute, step_size):
+    """
+
+    :param day:
+    :param hour:
+    :param minute:
+    :param size:
+    :return:
+    """
+    count = 0
+    data = pd.DataFrame()
+    for x in range(day, max_day):
+        if x == 17:
+            continue
+        for y in range(hour, max_hour):
+                for z in range(minute, max_minute):
+                    data_0 = rd.read_txt(x, y, z)
+                    data_1 = data_0.drop(['control', 'police', 'empty', 'state', 'viaduct', 'brake', 'P1',
+                                          'receipt_time', 'speed', 'direction', 'numS', 'P2'], axis=1).copy()
+                    del data_0
+                    data_1['index'] = data_1.index
+                    data_1['txt_time'] = rd.txt_name(x, y, z)
+                    count = count + 1
+                    if count == 1:
+                        data = data_1
+                    else:
+                        data = data.append(data_1, ignore_index=True)
+                    if count == step_size:
+                        _drift_error_core(data)
+                        del data
+                        count = 0
+
+
+def drift_error(day, hour, minute, size=None):
+        """
+
+        :param day:
+        :param hour:
+        :param minute:
+        :param size:
+        :return:
+        """
+        _drift_error(day, hour, minute, size)
+        print("drift_error处理已完成")
 
 
 # =========================================================================
@@ -154,7 +253,7 @@ def _data_reduce_core(day, hour, minute, pt_name02):
         print('%s ：%s' % (rd.txt_name(day, hour, minute), result))
 
 
-def _data_reduce():
+def data_reduce():
     """
     所有数据精简
     :return:
@@ -184,7 +283,7 @@ def _data_reduce():
 
 
 # =============================================================================
+
 if __name__ == '__main__':
     pass
-    data_clean('brake', size='all')
-    # data_clean('state', day=2, hour=10, minute=6)
+    drift_error(1, 0, 0, 60)
