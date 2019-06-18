@@ -24,6 +24,7 @@ columns = ['id', 'control', 'police', 'empty',
 reduction_columns = ['id', 'control', 'empty', 'state',
                      'receipt_time', 'gps_time', 'lon', 'lat', 'speed']
 
+
 # ===========================日志记录目录=================================
 
 
@@ -35,3 +36,4 @@ def init_log():
 
 if __name__ == '__main__':
     pass
+

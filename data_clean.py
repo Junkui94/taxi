@@ -140,11 +140,10 @@ def data_error_delete(types):
 
 # =========================================================================
 
-
 def _drift_judge(df):
     """
 
-    :param data:
+    :param df:
     :return:
     """
     if len(df) > 1:
@@ -157,35 +156,17 @@ def _drift_judge(df):
         """
         time_gap = map(lambda x, y: datetime.timedelta.total_seconds(y - x), gps_time[:-1:], gps_time[1::])
         dis = map(lambda x, y: distance(y, x).meters, point[:-1:], point[1::])
-        # 方案一
-        # speed = list(map(lambda x, y: (y / x) > 180, time_gap, dis)) + [False]
-        # w = 0
-        # for z in range(len(speed)):
-        #     if speed[z] is True and w == 0:
-        #         w = 1
-        #         speed[z] = False
-        #     elif speed[z] is True and w == 1:
-        #         speed[z] = True
-        #     elif speed[z] is False and w == 1:
-        #         w = 0
-        # df[speed].to_csv('%s/drift_data.txt' % path_error_data, mode='a', header=0, index=0, sep="|")
-        # # 方案二
-        speed = map(lambda x, y: (y / x) > 180, time_gap, dis)
+        speed = list(map(lambda x, y: (y / x) > 180, time_gap, dis)) + [False]
         w = 0
-        judge = []
-        for z in speed:
-            if z is True and w == 0:
+        for z in range(len(speed)):
+            if speed[z] is True and w == 0:
                 w = 1
-                judge = judge + [False]
-            elif z is True and w == 1:
-                judge = judge + [True]
-            elif z is False and w == 1:
+                speed[z] = False
+            elif speed[z] is True and w == 1:
+                speed[z] = True
+            elif speed[z] is False and w == 1:
                 w = 0
-                judge = judge + [False]
-            else:
-                judge = judge + [False]
-        judge = judge + [False]
-        df[judge].to_csv('%s/drift_data.txt' % path_error_data, mode='a', header=0, index=0, sep="|")
+        df[speed].to_csv('%s/drift_data.txt' % path_error_data, mode='a', header=0, index=0, sep="|")
 
 
 def _drift_error_core(data):
@@ -221,7 +202,7 @@ def _drift_error(day, hour, minute, step_size):
                 try:
                     data_0 = rd.read_txt(x, y, z)
                     data_1 = data_0.drop(['control', 'police', 'empty', 'state', 'viaduct', 'brake', 'P1',
-                                          'receipt_time', 'speed', 'direction', 'numS', 'P2'], axis=1).copy()
+                                          'receipt_time', 'speed', 'direction', 'numS', 'P2'], axis=1, inplace=True)
                     del data_0
                     data_1['index_0'] = data_1.index
                     data_1['txt_time'] = rd.txt_name(x, y, z)
@@ -254,6 +235,31 @@ def drift_error(day, hour, minute, step_size):
     """
     _drift_error(day, hour, minute, step_size)
     print("drift_error处理已完成")
+
+
+def data_drift_delete():
+    """
+
+    :return:
+    """
+    df0 = pd.read_csv('./error_data/drift_data.txt',
+                      names=['id', 'gps_time', 'lon', 'lat', 'index_1', 'txt_name', 'point'], sep='|')
+    df0.groupby('txt_name').apply(_drift_delete)
+
+
+def _drift_delete(df0):
+    """
+
+    :return:
+    """
+    pass
+    df1 = fo.error_data_path(df0['txt_name'])
+    df2 = rd.read_txt(df1.day, df1.hour, df1.minute)
+    df2['index_1'] = df2.index
+    df3 = df2[~df2.index_1.isin(df0['index_1'])]
+    df3.drop(['index_1'], axis=1, inplace=True)
+    print(df3)
+    # print(df0['index_1'])
 
 
 # =========================================================================
@@ -313,4 +319,4 @@ def data_reduce():
 
 if __name__ == '__main__':
     pass
-    drift_error(1, 0, 0, step_size=2)
+    data_drift_delete()

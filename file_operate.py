@@ -34,25 +34,19 @@ def unit_txt():
         df1.to_csv("./missing_data.txt", header=0, index=0, sep='|', mode='a')
 
 
-def error_data_path(types):
+def error_data_path(df):
     """
 
-    :param types:
+    :param df1:
     :return:
     """
-    column1 = mi.columns.copy()
-    column1.append('txt_name')
-    df0 = pd.read_csv('%s/%s_data.txt' % (file_dir, types), names=column1, sep='|',
-                      encoding='iso-8859-1', low_memory=False)
-    df1 = pd.DataFrame()
-    df1['txt_name'] = df0['txt_name'].copy()
-    del df0
-    df1.drop_duplicates(['txt_name'], inplace=True)
-    df2 = df1.txt_name.str.extract('1603(?P<day>\\d{2})(?P<hour>\\d{2})(?P<minute>\\d{2}).txt', expand=True)
-    df1['day'] = pd.DataFrame(df2.day, dtype=int)
-    df1['hour'] = pd.DataFrame(df2.hour, dtype=int)
-    df1['minute'] = pd.DataFrame(df2.minute, dtype=int)
-    return df1
+    df0 = pd.DataFrame(df)
+    df0.drop_duplicates(['txt_name'], inplace=True)
+    df1 = df0.txt_name.str.extract('1603(?P<day>\\d{2})(?P<hour>\\d{2})(?P<minute>\\d{2}).txt', expand=True)
+    df0['day'] = pd.DataFrame(df1.day, dtype=int)
+    df0['hour'] = pd.DataFrame(df1.hour, dtype=int)
+    df0['minute'] = pd.DataFrame(df1.minute, dtype=int)
+    return df0
 
 
 def copy_file(path_from, path_to, types_error=None, day=None, hour=None, minute=None):
@@ -71,22 +65,16 @@ def copy_file(path_from, path_to, types_error=None, day=None, hour=None, minute=
         shutil.copyfile('%s/%02d/%02d/%s' % (path_from, day, hour, name),
                         '%s/%02d/%02d/%s' % (path_to, day, hour, name))
     else:
-        df1 = error_data_path(types_error)
+        column1 = mi.columns.copy()
+        column1.append('txt_name')
+        df0 = pd.read_csv('%s/%s_data.txt' % (file_dir, types), names=column1, sep='|',
+                          encoding='iso-8859-1', low_memory=False)
+        df1 = error_data_path(df0['txt_name'])
         for y in df1.index:
             x = df1.loc[y]
             shutil.copyfile('%s/%02d/%02d/%s' % (path_from, x.day, x.hour, x.txt_name),
                             '%s/%02d/%02d/%s' % (path_to, x.day, x.hour, x.txt_name))
     print('文件快速备份已完成！')
-
-
-def drift_file(name='drift_data.txt'):
-    """
-
-    :param name:
-    :return:
-    """
-    pass
-    data = pd.read_csv('%s/%s' % (file_dir, name))
 
 
 if __name__ == '__main__':
