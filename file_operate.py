@@ -37,7 +37,7 @@ def unit_txt():
 def error_data_path(df):
     """
 
-    :param df1:
+    :param df:
     :return:
     """
     df0 = pd.DataFrame(df)
@@ -67,7 +67,7 @@ def copy_file(path_from, path_to, types_error=None, day=None, hour=None, minute=
     else:
         column1 = mi.columns.copy()
         column1.append('txt_name')
-        df0 = pd.read_csv('%s/%s_data.txt' % (file_dir, types), names=column1, sep='|',
+        df0 = pd.read_csv('%s/%s_data.txt' % (file_dir, types_error), names=column1, sep='|',
                           encoding='iso-8859-1', low_memory=False)
         df1 = error_data_path(df0['txt_name'])
         for y in df1.index:
