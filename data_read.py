@@ -13,7 +13,8 @@ windows下的路径
 源数据路径：path2 
 """
 
-path_a = mi.path0  # 选择源数据路径
+# path_a = mi.path0  # 选择源数据路径
+path_a = mi.path5  # 统计
 path_b = mi.path1  # 选择精简数据路径
 
 isExists = os.path.exists(path_a)

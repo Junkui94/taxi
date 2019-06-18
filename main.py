@@ -13,7 +13,7 @@ windows下的路径
 
 path1 = '/media/wjk/taxi/data-1'
 path0 = '/media/wjk/taxi/data-0'
-# path0 = '/media/wjk/wjkfiles/data-0'
+path5 = '/media/wjk/wjkfiles/data'
 path3 = 'F:/test/data-1'
 path2 = 'F:/taxi/data-0'
 # ==========================数据字段名=====================================
@@ -21,7 +21,7 @@ columns = ['id', 'control', 'police', 'empty',
            'state', 'viaduct', 'brake', 'P1',
            'receipt_time', 'gps_time', 'lon', 'lat',
            'speed', 'direction', 'numS', 'P2']
-reduction_columns = ['id', 'control', 'empty', 'state',
+reduction_columns = ['id', 'empty', 'state',
                      'receipt_time', 'gps_time', 'lon', 'lat', 'speed']
 
 

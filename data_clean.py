@@ -1,5 +1,6 @@
 import os
 import time
+import subprocess as sp
 import pandas as pd
 import datetime
 from geopy.distance import distance
@@ -252,14 +253,12 @@ def _drift_delete(df0):
 
     :return:
     """
-    pass
     df1 = fo.error_data_path(df0['txt_name'])
     df2 = rd.read_txt(df1.day, df1.hour, df1.minute)
     df2['index_1'] = df2.index
     df3 = df2[~df2.index_1.isin(df0['index_1'])]
     df3.drop(['index_1'], axis=1, inplace=True)
-    print(df3)
-    # print(df0['index_1'])
+    df3.to_csv(rd.path_name(df1.day, df1.hour, df1.minute), header=0, index=0, sep="|")
 
 
 # =========================================================================
@@ -276,9 +275,9 @@ def _data_reduce_core(day, hour, minute, pt_name02):
     """
     try:
         data = rd.read_txt(day, hour, minute)
-        data.drop(['police', 'viaduct', 'brake', 'P1', 'direction', 'numS', 'P2'], axis=1,
+        data.drop(['control', 'police', 'viaduct', 'brake', 'P1', 'direction', 'numS', 'P2'], axis=1,
                   inplace=True, errors='ignore')
-        data.to_csv(pt_name02, index=False)
+        data.to_csv(pt_name02, header=0, index=0, sep="|")
 
     except Exception as result:
         file = open('./log/reduce_log.txt', 'a')
@@ -292,31 +291,73 @@ def data_reduce():
     所有数据精简
     :return:
     """
-    pt_name02 = ''
-    day, hour, minute = 1, 0, 0
     for x in range(1, max_day):
         if x == 17:
             continue
         for y in range(0, max_hour):
-            for z in range(0, max_minute):
-                pt_name02 = rd.path_name(x, y, z, types=1)
-                if not os.path.exists(pt_name02):
-                    day, hour, minute = x, y, z
-                    break
-    path02 = rd.txt_path(day, hour, 1)
-    for x in range(day, max_day):
-        if x == 17:
-            continue
-        for y in range(0, max_hour):
+            path02 = rd.txt_path(x, y, 1)
             if not os.path.exists(path02):
                 os.makedirs(path02)
             for z in range(0, max_minute):
-                _data_reduce_core(x, y, z, pt_name02)
+                pt_name02 = rd.path_name(x, y, z, types=1)
+                if not os.path.exists(pt_name02):
+                    _data_reduce_core(x, y, z, pt_name02)
     print('已有数据精简完成！')
+
+
+# =============================================================================
+
+
+def data_count():
+    """
+    所有数据精简
+    :return:
+    """
+    for x in range(25, max_day):
+        if x == 17:
+            continue
+        # _unzip_file(x)
+        for y in range(0, max_hour):
+            for z in range(0, max_minute):
+                _data_count(x, y, z)
+    print('已有数据统计完成！')
+
+
+def _data_count(x, y, z):
+    """
+
+    :param x:
+    :param y:
+    :param z:
+    :return:
+    """
+    pn = rd.path_name(x, y, z)
+    count = sp.getoutput('wc -l %s' % pn)
+    file = open('./log/count.txt', 'a')
+    file.write('%s\n' % count)
+    file.close()
+
+
+def _unzip_file(x):
+    """
+
+    :param x:
+    :return:
+    """
+    data = pd.read_csv('/media/wjk/wjkfiles/data/password.txt', names='d')
+    if x > 17:
+        ps = data.loc[x - 2, 'd']
+    else:
+        ps = data.loc[x - 1, 'd']
+    print(str(ps))
+    pn = '/media/wjk/wjkfiles/data/HT1603%02d.rar' % x
+    sp.call('unrar x -p%s %s' % (ps, pn))
+
+    pass
 
 
 # =============================================================================
 
 if __name__ == '__main__':
     pass
-    data_drift_delete()
+    data_count()
