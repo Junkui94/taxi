@@ -203,7 +203,7 @@ def _drift_error(day, hour, minute, step_size):
                 try:
                     data_0 = rd.read_txt(x, y, z)
                     data_1 = data_0.drop(['control', 'police', 'empty', 'state', 'viaduct', 'brake', 'P1',
-                                          'receipt_time', 'speed', 'direction', 'numS', 'P2'], axis=1, inplace=True)
+                                          'receipt_time', 'speed', 'direction', 'numS', 'P2'], axis=1).copy()
                     del data_0
                     data_1['index_0'] = data_1.index
                     data_1['txt_time'] = rd.txt_name(x, y, z)
