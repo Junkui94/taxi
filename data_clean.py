@@ -1,6 +1,7 @@
 import os
 import time
 import pandas as pd
+import datetime
 from geopy.distance import distance
 import data_read as rd
 import main as mi
@@ -139,22 +140,52 @@ def data_error_delete(types):
 
 # =========================================================================
 
+
 def _drift_judge(df):
     """
 
-    :param df:
+    :param data:
     :return:
     """
-    for x in range(len(df.index)-1):
-        point_one = (float(df.loc[df.index[x], ['lat']]), float(df.loc[df.index[x], ['lon']]))
-        point_two = (float(df.loc[df.index[x+1], ['lat']]), float(df.loc[df.index[x+1], ['lon']]))
-        dis = distance(point_one, point_two).meters
-        time_gap = (df.loc[df.index[x+1], ['gps_time']] -
-                    df.loc[df.index[x], ['gps_time']]).dt.seconds
-        speed = dis/int(time_gap)
-        # print(speed)
-        if speed > 50:
-            df.loc[df.index[x]].to_csv('%s/drift_data.txt' % path_error_data, mode='a', header=0, index=0, sep="|")
+    if len(df) > 1:
+        gps_time = pd.Series(df['gps_time'])
+        point = pd.Series(df['point'])
+        """
+        比较（该法效率不高）
+        time_gap = (df['gps_time']-df['gps_time'].shift(1))
+        print(time_gap)
+        """
+        time_gap = map(lambda x, y: datetime.timedelta.total_seconds(y - x), gps_time[:-1:], gps_time[1::])
+        dis = map(lambda x, y: distance(y, x).meters, point[:-1:], point[1::])
+        # 方案一
+        # speed = list(map(lambda x, y: (y / x) > 180, time_gap, dis)) + [False]
+        # w = 0
+        # for z in range(len(speed)):
+        #     if speed[z] is True and w == 0:
+        #         w = 1
+        #         speed[z] = False
+        #     elif speed[z] is True and w == 1:
+        #         speed[z] = True
+        #     elif speed[z] is False and w == 1:
+        #         w = 0
+        # df[speed].to_csv('%s/drift_data.txt' % path_error_data, mode='a', header=0, index=0, sep="|")
+        # # 方案二
+        speed = map(lambda x, y: (y / x) > 180, time_gap, dis)
+        w = 0
+        judge = []
+        for z in speed:
+            if z is True and w == 0:
+                w = 1
+                judge = judge + [False]
+            elif z is True and w == 1:
+                judge = judge + [True]
+            elif z is False and w == 1:
+                w = 0
+                judge = judge + [False]
+            else:
+                judge = judge + [False]
+        judge = judge + [False]
+        df[judge].to_csv('%s/drift_data.txt' % path_error_data, mode='a', header=0, index=0, sep="|")
 
 
 def _drift_error_core(data):
@@ -163,10 +194,12 @@ def _drift_error_core(data):
     :param data:
     :return:
     """
-    data.sort_values(['id', 'gps_time'], inplace=True)
+    time_1 = time.time()
     data.drop_duplicates(['id', 'gps_time'], keep='first', inplace=True)
-    for ids, group in data.groupby('id'):
-        _drift_judge(group)
+    data['point'] = data.apply(lambda x: (float(x['lat']), float(x['lon'])), axis=1)
+    data.groupby('id').apply(_drift_judge)
+    time_2 = time.time()
+    print('用时:%s' % (time_2 - time_1))
 
 
 def _drift_error(day, hour, minute, step_size):
@@ -184,42 +217,43 @@ def _drift_error(day, hour, minute, step_size):
         if x == 17:
             continue
         for y in range(hour, max_hour):
-                for z in range(minute, max_minute):
-                    try:
-                        data_0 = rd.read_txt(x, y, z)
-                        data_1 = data_0.drop(['control', 'police', 'empty', 'state', 'viaduct', 'brake', 'P1',
-                                              'receipt_time', 'speed', 'direction', 'numS', 'P2'], axis=1).copy()
-                        del data_0
-                        data_1['index'] = data_1.index
-                        data_1['txt_time'] = rd.txt_name(x, y, z)
-                        count = count + 1
-                        if count == 1:
-                            data = data_1
-                        else:
-                            data = data.append(data_1, ignore_index=True)
-                        if count == step_size:
-                            data['gps_time'] = pd.to_datetime(data['gps_time'])
-                            _drift_error_core(data)
-                            print(1000)
-                            del data
-                            count = 0
-                    except Exception as result:
-                        file = open('./log/drift_log.txt', 'a')
-                        file.write('%s,%s\n' % (time0, result))
-                        file.close()
+            for z in range(minute, max_minute):
+                try:
+                    data_0 = rd.read_txt(x, y, z)
+                    data_1 = data_0.drop(['control', 'police', 'empty', 'state', 'viaduct', 'brake', 'P1',
+                                          'receipt_time', 'speed', 'direction', 'numS', 'P2'], axis=1).copy()
+                    del data_0
+                    data_1['index_0'] = data_1.index
+                    data_1['txt_time'] = rd.txt_name(x, y, z)
+                    count = count + 1
+                    if count == 1:
+                        data = data_1
+                    else:
+                        data = data.append(data_1, ignore_index=True)
+                    if count == step_size:
+                        data['gps_time'] = pd.to_datetime(data['gps_time'], format='%Y-%m-%d %H:%M:%S')
+                        _drift_error_core(data)
+                        count = 0
+                        del data
+                        # exit()
+
+                except Exception as result:
+                    file = open('./log/drift_log.txt', 'a')
+                    file.write('%s,%s\n' % (time0, result))
+                    file.close()
 
 
 def drift_error(day, hour, minute, step_size):
-        """
+    """
 
-        :param day:
-        :param hour:
-        :param minute:
-        :param step_size:
-        :return:
-        """
-        _drift_error(day, hour, minute, step_size)
-        print("drift_error处理已完成")
+    :param day:
+    :param hour:
+    :param minute:
+    :param step_size:
+    :return:
+    """
+    _drift_error(day, hour, minute, step_size)
+    print("drift_error处理已完成")
 
 
 # =========================================================================
@@ -272,7 +306,6 @@ def data_reduce():
                 os.makedirs(path02)
             for z in range(0, max_minute):
                 _data_reduce_core(x, y, z, pt_name02)
-
     print('已有数据精简完成！')
 
 
@@ -280,4 +313,4 @@ def data_reduce():
 
 if __name__ == '__main__':
     pass
-    drift_error(1, 0, 0, 30)
+    drift_error(1, 0, 0, step_size=2)
