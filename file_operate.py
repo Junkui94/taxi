@@ -79,6 +79,16 @@ def copy_file(path_from, path_to, types_error=None, day=None, hour=None, minute=
     print('文件快速备份已完成！')
 
 
+def drift_file(name='drift_data.txt'):
+    """
+
+    :param name:
+    :return:
+    """
+    pass
+    data = pd.read_csv('%s/%s' % (file_dir, name))
+
+
 if __name__ == '__main__':
     a = path_a
     b = path_b

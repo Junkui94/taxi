@@ -8,9 +8,6 @@ import file_operate as fo
 
 time0 = time.asctime()
 
-# earliest_time = '2016-02-29 23:55:00'
-# latest_time = '2016-03-31 23:59:59'
-
 max_day, max_hour, max_minute = 32, 24, 60  # max_day从1开始.
 
 # =========================初始化文件目录==============================
@@ -55,28 +52,6 @@ types_drop = {'missing': 'data.dropna(inplace=True)',
 # ====================================================================
 
 
-def _data_clean(types, size=None, day=None, hour=None, minute=None):
-    """
-
-    :param types:
-    :param size:
-    :param day:
-    :param hour:
-    :param minute:
-    :return:
-    """
-    types_choice = {'search': types_search[types], 'drop': types_drop[types]}
-    if size != 'all':
-        _data_clean_core(types, day, hour, minute, types_choice)
-    else:
-        for x in range(1, max_day):
-            if x == 17:
-                continue
-            for y in range(0, max_hour):
-                for z in range(0, max_minute):
-                    _data_clean_core(types, day=x, hour=y, minute=z, types_choice=types_choice)
-
-
 def _data_clean_core(types, day, hour, minute, types_choice):
     """
 
@@ -103,6 +78,28 @@ def _data_clean_core(types, day, hour, minute, types_choice):
         file = open('./log/%s_log.txt' % types, 'a')
         file.write('%s,%s,%s\n' % (time0, rd.txt_name(day, hour, minute), result))
         file.close()
+
+
+def _data_clean(types, size=None, day=None, hour=None, minute=None):
+    """
+
+    :param types:
+    :param size:
+    :param day:
+    :param hour:
+    :param minute:
+    :return:
+    """
+    types_choice = {'search': types_search[types], 'drop': types_drop[types]}
+    if size != 'all':
+        _data_clean_core(types, day, hour, minute, types_choice)
+    else:
+        for x in range(1, max_day):
+            if x == 17:
+                continue
+            for y in range(0, max_hour):
+                for z in range(0, max_minute):
+                    _data_clean_core(types, day=x, hour=y, minute=z, types_choice=types_choice)
 
 
 def data_clean(types, size=None, day=None, hour=None, minute=None):
@@ -148,38 +145,28 @@ def _drift_judge(df):
     :param df:
     :return:
     """
-    index_list = df.index.tolist()
-    for x in range(len(index_list)-1):
-        point_one = (float(df.loc[index_list[x], ['lat']].copy()), float(df.loc[index_list[x], ['lon']].copy()))
-        point_two = (float(df.loc[index_list[x+1], ['lat']].copy()), float(df.loc[index_list[x+1], ['lon']].copy()))
+    for x in range(len(df.index)-1):
+        point_one = (float(df.loc[df.index[x], ['lat']]), float(df.loc[df.index[x], ['lon']]))
+        point_two = (float(df.loc[df.index[x+1], ['lat']]), float(df.loc[df.index[x+1], ['lon']]))
         dis = distance(point_one, point_two).meters
-        time_gap = (pd.to_datetime(df.loc[index_list[x + 1], ['gps_time']]) -
-                    pd.to_datetime(df.loc[index_list[x], ['gps_time']])).dt.seconds
-        speed = dis/float(time_gap)
-        if speed > 180:
-            # print(speed)
-            df.loc[index_list[x]].to_csv('%s/drift_data.txt' % path_error_data, mode='a', header=0, index=0, sep="|")
+        time_gap = (df.loc[df.index[x+1], ['gps_time']] -
+                    df.loc[df.index[x], ['gps_time']]).dt.seconds
+        speed = dis/int(time_gap)
+        # print(speed)
+        if speed > 50:
+            df.loc[df.index[x]].to_csv('%s/drift_data.txt' % path_error_data, mode='a', header=0, index=0, sep="|")
 
 
 def _drift_error_core(data):
     """
 
-    :param day:
-    :param hour:
-    :param minute:
+    :param data:
     :return:
     """
-    try:
-
-        data.sort_values(['id', 'gps_time'], inplace=True)
-        data.drop_duplicates(['id', 'gps_time'], keep='first', inplace=True)
-        for ids, group in data.groupby('id'):
-            _drift_judge(group)
-
-    except Exception as result:
-        file = open('./log/drift_log.txt', 'a')
-        file.write('%s,%s\n' % (time0, result))
-        file.close()
+    data.sort_values(['id', 'gps_time'], inplace=True)
+    data.drop_duplicates(['id', 'gps_time'], keep='first', inplace=True)
+    for ids, group in data.groupby('id'):
+        _drift_judge(group)
 
 
 def _drift_error(day, hour, minute, step_size):
@@ -188,7 +175,7 @@ def _drift_error(day, hour, minute, step_size):
     :param day:
     :param hour:
     :param minute:
-    :param size:
+    :param step_size:
     :return:
     """
     count = 0
@@ -198,33 +185,40 @@ def _drift_error(day, hour, minute, step_size):
             continue
         for y in range(hour, max_hour):
                 for z in range(minute, max_minute):
-                    data_0 = rd.read_txt(x, y, z)
-                    data_1 = data_0.drop(['control', 'police', 'empty', 'state', 'viaduct', 'brake', 'P1',
-                                          'receipt_time', 'speed', 'direction', 'numS', 'P2'], axis=1).copy()
-                    del data_0
-                    data_1['index'] = data_1.index
-                    data_1['txt_time'] = rd.txt_name(x, y, z)
-                    count = count + 1
-                    if count == 1:
-                        data = data_1
-                    else:
-                        data = data.append(data_1, ignore_index=True)
-                    if count == step_size:
-                        _drift_error_core(data)
-                        del data
-                        count = 0
+                    try:
+                        data_0 = rd.read_txt(x, y, z)
+                        data_1 = data_0.drop(['control', 'police', 'empty', 'state', 'viaduct', 'brake', 'P1',
+                                              'receipt_time', 'speed', 'direction', 'numS', 'P2'], axis=1).copy()
+                        del data_0
+                        data_1['index'] = data_1.index
+                        data_1['txt_time'] = rd.txt_name(x, y, z)
+                        count = count + 1
+                        if count == 1:
+                            data = data_1
+                        else:
+                            data = data.append(data_1, ignore_index=True)
+                        if count == step_size:
+                            data['gps_time'] = pd.to_datetime(data['gps_time'])
+                            _drift_error_core(data)
+                            print(1000)
+                            del data
+                            count = 0
+                    except Exception as result:
+                        file = open('./log/drift_log.txt', 'a')
+                        file.write('%s,%s\n' % (time0, result))
+                        file.close()
 
 
-def drift_error(day, hour, minute, size=None):
+def drift_error(day, hour, minute, step_size):
         """
 
         :param day:
         :param hour:
         :param minute:
-        :param size:
+        :param step_size:
         :return:
         """
-        _drift_error(day, hour, minute, size)
+        _drift_error(day, hour, minute, step_size)
         print("drift_error处理已完成")
 
 
@@ -286,4 +280,4 @@ def data_reduce():
 
 if __name__ == '__main__':
     pass
-    drift_error(1, 0, 0, 60)
+    drift_error(1, 0, 0, 30)

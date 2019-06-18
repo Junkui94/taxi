@@ -1,6 +1,5 @@
 # -*-coding:utf-8 -*-
 
-import sys
 import matplotlib.pyplot as plt
 import geoplotlib as gp
 from geoplotlib.layers import BaseLayer
@@ -11,7 +10,6 @@ import pyecharts as pe
 from pyecharts import Geo
 import data_analysis as da
 
-reload(sys)
 
 # ==================================================================
 # 上海市的地图路网背景
