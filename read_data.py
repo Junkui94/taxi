@@ -1,6 +1,6 @@
 import os
-import main as ma
 import pandas as pd
+import main as mi
 
 # ==========================判断数据文件路径是否存在================
 
@@ -13,9 +13,8 @@ windows下的路径
 源数据路径：path2 
 """
 
-
-path_a = ma.path0  # 选择源数据路径
-path_b = ma.path1  # 选择精简数据路径
+path_a = mi.path0  # 选择源数据路径
+path_b = mi.path1  # 选择精简数据路径
 
 isExists = os.path.exists(path_a)
 if not isExists:
@@ -64,7 +63,7 @@ def path_name(day, hour, minute, types=0):
     """
     name = txt_name(day, hour, minute)
     path = txt_path(day, hour, types)
-    pt_name = '%s/%s' % (path, name)
+    pt_name = '%s%s' % (path, name)
     return pt_name
 
 
@@ -78,12 +77,7 @@ def view_one_txt(day, hour, minute, types=0):
     :return:
     """
     path = path_name(day, hour, minute, types)
-    data = pd.read_csv(path, delimiter='|', names=['id', 'control', 'police', 'empty',
-                                                   'state', 'Viaduct', 'brake', 'P1',
-                                                   'receipt_time', 'gps_time', 'lon', 'lat',
-                                                   'speed', 'direction', 'numS', 'P2'],
-                       encoding='iso-8859-1')
-
+    data = pd.read_csv(path, delimiter='|', names=mi.columns, encoding='iso-8859-1')
     print(data)
 
 
@@ -97,20 +91,15 @@ def read_txt(day, hour, minute, types=0):
     :return:
     """
     pt_name0 = path_name(day, hour, minute, types)
-    if types == 0:
+    columns = mi.columns
+    if types != 0:
+        columns = mi.reduction_columns
+    data = pd.read_csv(pt_name0, delimiter='|', names=columns, encoding='iso-8859-1', low_memory=False)
 
-        pt_name0 = path_name(day, hour, minute, types)
-        data = pd.read_csv(pt_name0, delimiter='|',
-                           names=['id', 'control', 'police', 'empty',
-                                  'state', 'Viaduct', 'brake', 'P1',
-                                  'receipt_time', 'gps_time', 'lon', 'lat',
-                                  'speed', 'direction', 'numS', 'P2'], encoding='iso-8859-1', low_memory=False)
-    else:
-        data = pd.read_csv(pt_name0,
-                           names=['id', 'control', 'empty', 'state', 'receipt_time',
-                                  'gps_time', 'lon', 'lat', 'speed'], encoding='iso-8859-1', low_memory=False)
     return data
 
 
 if __name__ == '__main__':
     pass
+    da = read_txt(1, 7, 44)
+    print(da)

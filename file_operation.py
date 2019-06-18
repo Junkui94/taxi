@@ -1,8 +1,7 @@
 import os
 import shutil
 import pandas as pd
-import main
-
+import main as mi
 # =========================================================
 file_dir = "./error_data"
 path_a = '/media/wjk/wjkfiles/data-0'
@@ -29,7 +28,7 @@ def unit_txt():
     """
     lists = file_name()
     for x in lists:
-        df1 = pd.read_csv('%s/%s' % (file_dir, x), names=[main.columns],
+        df1 = pd.read_csv('%s/%s' % (file_dir, x), names=[mi.columns],
                           encoding='iso-8859-1', low_memory=False)
         df1.to_csv("./missing_data.txt", header=0, index=0, sep='|', mode='a')
 
@@ -42,15 +41,19 @@ def copy_file(error_name, path_from, path_to):
     :param path_to:
     :return:
     """
-    column1 = main.columns.copy()
+    column1 = mi.columns.copy()
     column1.append('txt_name')
-    df1 = pd.read_csv('%s/%s' % (file_dir, error_name), names=column1, sep='|',
+    df0 = pd.read_csv('%s/%s' % (file_dir, error_name), names=column1, sep='|',
                       encoding='iso-8859-1', low_memory=False)
+    df1 = pd.DataFrame()
+    df1['txt_name'] = df0['txt_name'].copy()
+    del df0
     df1.drop_duplicates(['txt_name'], inplace=True)
     df2 = df1.txt_name.str.extract('1603(?P<day>\\d{2})(?P<hour>\\d{2})(?P<minute>\\d{2}).txt', expand=True)
     df1['day'] = pd.DataFrame(df2.day)
     df1['hour'] = pd.DataFrame(df2.hour)
     df1['minute'] = pd.DataFrame(df2.minute)
+    print(df1)
     for y in df1.index:
         x = df1.loc[y]
         shutil.copyfile('%s/%s/%s/%s' % (path_from, x.day, x.hour, x.txt_name),
@@ -59,4 +62,4 @@ def copy_file(error_name, path_from, path_to):
 
 
 if __name__ == '__main__':
-    copy_file('duplication_data.txt', path_b, path_a)
+    copy_file('type_police_data.txt', path_b, path_a)

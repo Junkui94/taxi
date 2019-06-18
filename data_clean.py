@@ -1,34 +1,26 @@
 import os
 import time
 import read_data as rd
+import main as mi
 
 time0 = time.asctime()
 
 max_day, max_hour, max_minute = 32, 24, 60  # max_day从1开始.
 
-# ===========================初始化日志记录文件========================
+# =========================初始化文件目录==============================
 """
-为每一步数据处理提供记录文件
-"""
-path_log = './log/'
-if not os.path.exists(path_log):
-    os.mkdir(path_log)
-# ==================================================================
-
-
-# =========================初始化异常数据文件=====================
-"""
-记录异常数据
+记录异常数据目录
 """
 path_error_data = './error_data/'
 if not os.path.exists(path_error_data):
     os.mkdir(path_error_data)
+mi.init_log()
 
 
-# =========================all_data_processing_function==================
+# ===================================================================
 
 
-def all_data(types):
+def all_data(types, column='other'):
     """
 
     :param types:
@@ -44,7 +36,7 @@ def all_data(types):
                 elif types == 'clean2':
                     _data_clean2(day, hour, minute)
                 elif types == 'clean3':
-                    _data_clean3(day, hour, minute)
+                    _data_clean3(day, hour, minute, column)
 
 
 # ========================================================================
@@ -95,7 +87,7 @@ def _data_clean2(day, hour, minute):
     try:
         data = rd.read_txt(day, hour, minute)
         # 判断重复数据并进行记录
-        duplication_data = data[data.duplicated()]
+        duplication_data = data[data.duplicated()].copy()
         if not duplication_data.empty:
             duplication_data['txt_name'] = rd.txt_name(day, hour, minute)
             duplication_data.to_csv('%s/duplication_data.txt' % path_error_data, mode='a', header=0, index=0, sep="|")
@@ -150,7 +142,7 @@ def _data_clean3(day, hour, minute):
         #     data.drop(index=control_error.index, inplace=True)
         #     data.to_csv(rd.path_name(day, hour, minute), header=0, index=0, sep="|")
         # ====police=========================================================================================
-        police_error = data[~data.police.isin([0, 1])]
+        police_error = data[~data.police.isin(['0', '1'])]
         if not police_error.empty:
             police_error['txt_name'] = rd.txt_name(day, hour, minute)
             # print(police_error)
