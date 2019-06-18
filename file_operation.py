@@ -62,4 +62,4 @@ def copy_file(error_name, path_from, path_to):
 
 
 if __name__ == '__main__':
-    copy_file('type_police_data.txt', path_b, path_a)
+    copy_file('police_data.txt', path_b, path_a)
