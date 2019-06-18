@@ -13,11 +13,11 @@ windows下的路径
 源数据路径：path2 
 """
 
-# path_a = mi.path0  # 选择源数据路径
-path_a = mi.path5  # 统计
+path_a = mi.path0  # 选择源数据路径
+# path_a = mi.path5  # 统计
 path_b = mi.path1  # 选择精简数据路径
 
-isExists = os.path.exists(path_a)
+isExists = os.path.exists(path_b)
 if not isExists:
     print("源数据文件不存在")
     exit()
@@ -108,5 +108,5 @@ def read_txt(day, hour, minute, types=0):
 
 if __name__ == '__main__':
     pass
-    da = read_txt(2, 10, 6)
+    da = read_txt(1, 10, 6, 1)
     print(da)

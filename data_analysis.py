@@ -4,19 +4,19 @@ import pandas as pd
 import data_read as rd
 import main as mi
 
-
 time0 = time.asctime()
 
 max_day, max_hour, max_minute = 32, 24, 60  # max_day从1开始.
 
-# =========================初始化文件目录==============================
+# =========================初始化文件及日志目录==============================
 """
 记录异常数据目录
 """
-path_error_data = './error_data/'
-if not os.path.exists(path_error_data):
-    os.mkdir(path_error_data)
+path_data = './error_data/'
+if not os.path.exists(path_data):
+    os.mkdir(path_data)
 mi.init_log()
+
 
 # ===================================================================
 
@@ -27,12 +27,8 @@ def _demand_judge(df):
     :param df:
     :return:
     """
-    index_list = df.index.tolist()
-    for x in range(len(index_list) - 1):
-        if df[df.index[x]] == 0 and df[df.index[x+1]] == 1:
-            pass
-        elif df[df.index[x]] == 1 and df[df.index[x+1]] == 0:
-            pass
+    if len(df) > 1:
+        pass
 
 
 def _demand_core(data):
@@ -41,10 +37,11 @@ def _demand_core(data):
     :param data:
     :return:
     """
-    data.sort_values(['id', 'gps_time'], inplace=True)
+    time_1 = time.time()
     data.drop_duplicates(['id', 'gps_time'], keep='first', inplace=True)
-    for ids, group in data.groupby('id'):
-        _demand_judge(group)
+    data.groupby('id').apply(_demand_judge)
+    time_2 = time.time()
+    print('用时:%s' % (time_2 - time_1))
 
 
 def _demand(day, hour, minute, step_size):
@@ -64,11 +61,10 @@ def _demand(day, hour, minute, step_size):
         for y in range(hour, max_hour):
             for z in range(minute, max_minute):
                 try:
-                    data_0 = rd.read_txt(x, y, z)
-                    data_1 = data_0.drop(['control', 'police', 'state', 'viaduct', 'brake', 'P1', 'lon', 'lat'
-                                          'receipt_time', 'speed', 'direction', 'numS', 'P2'], axis=1).copy()
+                    data_0 = rd.read_txt(x, y, z, 1)
+                    data_1 = data_0.drop(['empty', 'state', 'receipt_time', 'speed'], axis=1, inplace=True)
                     del data_0
-                    data_1['index'] = data_1.index
+                    data_1['index_0'] = data_1.index
                     data_1['txt_time'] = rd.txt_name(x, y, z)
                     count = count + 1
                     if count == 1:
@@ -76,23 +72,32 @@ def _demand(day, hour, minute, step_size):
                     else:
                         data = data.append(data_1, ignore_index=True)
                     if count == step_size:
+                        data['gps_time'] = pd.to_datetime(data['gps_time'], format='%Y-%m-%d %H:%M:%S')
+                        print(data)
                         _demand_core(data)
-                        del data
                         count = 0
+                        del data
+                        exit()
+
                 except Exception as result:
-                    file = open('./log/drift_log.txt', 'a')
+                    file = open('./log/demand_log.txt', 'a')
                     file.write('%s,%s\n' % (time0, result))
                     file.close()
 
 
-def demand(day, hour, minute, size=None):
+def demand(day, hour, minute, step_size):
     """
 
     :param day:
     :param hour:
     :param minute:
-    :param size:
+    :param step_size:
     :return:
     """
-    _demand(day, hour, minute, size)
+    _demand(day, hour, minute, step_size)
     print("demand处理已完成")
+
+
+if __name__ == '__main__':
+    pass
+    demand(1, 0, 0, 1)

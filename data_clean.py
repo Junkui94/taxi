@@ -12,7 +12,7 @@ time0 = time.asctime()
 
 max_day, max_hour, max_minute = 32, 24, 60  # max_day从1开始.
 
-# =========================初始化文件目录==============================
+# =========================初始化文件及日志目录==============================
 """
 记录异常数据目录
 """
@@ -360,4 +360,7 @@ def _unzip_file(x):
 
 if __name__ == '__main__':
     pass
-    data_count()
+    # data = pd.read_csv('./log/count.txt', names=['1', '2'], sep=' ')
+    # data = data[data['1'].str.len() != 3]
+    # data['1'] = data['1'].astype('int')
+    # print(data['1'].sum())
