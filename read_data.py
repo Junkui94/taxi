@@ -101,5 +101,5 @@ def read_txt(day, hour, minute, types=0):
 
 if __name__ == '__main__':
     pass
-    da = read_txt(1, 7, 44)
+    da = read_txt(2, 10, 6)
     print(da)
