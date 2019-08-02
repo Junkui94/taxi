@@ -18,110 +18,6 @@ if not os.path.exists(path_data):
 mi.init_log()
 
 
-# ===================================================================
-
-# def demand(day, hour, minute, step_size):
-#
-#     _demand(day, hour, minute, step_size)
-#     print("demand处理已完成")
-#
-#
-# def _demand(day, hour, minute, step_size):
-#
-#     count = 0
-#     data = pd.DataFrame()
-#     for x in range(day, max_day):
-#         if x == 17:
-#             continue
-#         for y in range(hour, max_hour):
-#             for z in range(minute, max_minute):
-#                 try:
-#                     data_0 = rd.read_txt(x, y, z, 1)
-#                     data_1 = data_0.drop(['receipt_time', 'speed'], axis=1).copy()
-#                     del data_0
-#                     data_1['index_0'] = data_1.index
-#                     data_1['txt_time'] = rd.txt_name(x, y, z)
-#                     count = count + 1
-#                     if count == 1:
-#                         data = data_1
-#                     else:
-#                         data = data.append(data_1, ignore_index=True)
-#                     if count == step_size:
-#                         data['gps_time'] = pd.to_datetime(data['gps_time'], format='%Y-%m-%d %H:%M:%S')
-#                         data['day'] = x
-#                         _demand_core(data)
-#                         count = 0
-#                         del data
-#                         # exit()
-#
-#                 except Exception as result:
-#                     file = open('./log/demand_log.txt', 'a')
-#                     file.write('%s,%s\n' % (time0, result))
-#                     file.close()
-#
-#
-# def _demand_core(data):
-#
-#     time_1 = time.time()
-#     data.drop_duplicates(['id', 'gps_time'], keep='first', inplace=True)
-#     data.groupby('id').apply(_demand_judge)
-#     del data
-#     time_2 = time.time()
-#     print('用时:%s' % (time_2 - time_1))
-#
-#
-# def _demand_judge(df):
-#
-#     print(df['gps_time'])
-#     exit()
-#     x = list(pd.Series(df.day).astype('int'))
-#     df.drop(['day'], axis=1, inplace=True)
-#     empty = df['empty'] - df['empty'].shift(1)
-#     empty = list(pd.Series(empty).astype('bool'))
-#     empty[0] = False
-#     # print(empty)
-#     # print(df[empty])
-#     # df[empty].to_csv('%s/%02d.txt' % (path_data, x[0]), mode='a', index=0, sep="|")
-#     del x
-#     del df
-#
-#
-# # ===================================================================
-#
-#
-# def _add_header(day):
-#     data = pd.read_csv('%s/%02d.txt' % (path_data, day),
-#                        names=['id', 'empty', 'state', 'gps_time', 'lon', 'lat', 'index_1', 'txt_name'],
-#                        sep='|')
-#     data.to_csv('./test/%02d.csv' % day, index=0)
-#
-#
-# def add_header_all():
-#     for x in range(1, max_day):
-#         if x == 17:
-#             continue
-#         _add_header(x)
-#
-#
-# # ===================================================================
-#
-#
-# def demand_clean(day):
-#     data = pd.read_csv('%s/%02d.csv' % (path_data, day))
-#     data['gps_time'] = pd.to_datetime(data['gps_time'], format='%Y-%m-%d %H:%M:%S')
-#
-#     data.groupby('id').apply(_demand_clean)
-#
-#
-# def _demand_clean(data):
-#     empty = data['empty'] - data['empty'].shift(1)
-#     times = data['gps_time'] - data['gps_time'].shift(1)
-#     print(data)
-#     print(empty)
-#     print(times)
-#     exit()
-
-
 def demand(day=1, hour=0, minute=0):
     for x in range(day, max_day):
         if x == 17:
@@ -148,7 +44,6 @@ def demand(day=1, hour=0, minute=0):
 
 def _demand_state(data):
     if data['empty'].mean() != 1.0 and data['empty'].mean() != 0.0:
-        # print(data)
         state_i = data['empty'] - data['empty'].shift(1)
         # print(state_i)
         da1 = data[state_i == -1]
@@ -159,36 +54,142 @@ def _demand_state(data):
         da3 = data.head(1)
         da4 = data.tail(1)
         return pd.concat([da3, da4], ignore_index=True)
-    # exit()
 
 
-def demand_reduct(day):
-    data = pd.DataFrame()
-    for i in range(day, day + 1):
-        da0 = pd.read_csv('./data/demand_data/%02d.csv' % day,
-                          names=['id', 'empty', 'gps_time', 'lon', 'lat'])
-        data = data.append(da0, ignore_index=True)
-    data.drop_duplicates(['id', 'gps_time'], inplace=True)
-    data.sort_values('gps_time', inplace=True)
-    data.groupby('id').apply(_demand_reduct)
+def demand_reduct_1():
+    for x in range(1, max_day):
+        try:
+            data = pd.read_csv('./data/demand_data/%02d.csv' % x,
+                               names=['id', 'empty', 'gps_time', 'lon', 'lat'])
+        except Exception as result:
+            print(result)
+            continue
+        data.drop_duplicates(['id', 'gps_time'], inplace=True)
+        data.sort_values('gps_time', inplace=True)
+        da = data.groupby('id').apply(_demand_reduct_1)
+        da.to_csv('./data/demand_data_1/%02d.csv' % x, mode='a', index=0, header=0)
 
 
-def _demand_reduct(data):
+def _demand_reduct_1(data):
     if data['empty'].mean() != 1.0 and data['empty'].mean() != 0.0:
         state_i = data['empty'] - data['empty'].shift(1)
-        # print(state_i)
-        da1 = data[state_i == -1]
-        da2 = data[state_i == 1]
-        da = pd.concat([da1, da2], ignore_index=True, sort=['gps_time'])
+        da0 = data[state_i == -1]
+        da1 = data[state_i == 1]
+        da = da0.append(da1, ignore_index=True)
         da.sort_values('gps_time', inplace=True)
-        print(da)
-        # return pd.concat([da1, da2], ignore_index=True)
+        return da
 
 
+def demand_reduct_2():
+    for x in range(1, max_day):
+        try:
+            data = pd.read_csv('./data/demand_data_1/%02d.csv' % x,
+                               names=['id', 'empty', 'gps_time', 'lon', 'lat'])
+        except Exception as result:
+            print(result)
+            continue
+        data['gps_time'] = pd.to_datetime(data['gps_time'], format='%Y-%m-%d %H:%M:%S')
+        data['od'] = None
+        da = data.groupby('id').apply(_demand_reduct_2)
+        da.to_csv('./data/demand_data_2/%02d.csv' % x, mode='a', index=0, header=0)
 
 
+def _demand_reduct_2(da):
+    # print(da)
+    if da.head(1)['empty'].any() == 1:
+        da[:1]['od'] = 'qd'
+        # print(data)
+        data = da[1:]
+    else:
+        data = da
+    if len(data) % 2 == 1:
+        da[-1:]['od'] = 'qo'
+        # print(data)
+        data = data[:-1]
+    da0 = data[data['empty'] == 0].reset_index()
+    da1 = data[data['empty'] == 1].reset_index()
+    gap_time = da1['gps_time'] - da0['gps_time']
+    x = gap_time < '00:02:00'
+    y = gap_time > '06:00:00'
+    da3 = pd.concat([da0[x], da1[x]], ignore_index=True)
+    # print(da3)
+    da4 = da3.append([da0[y], da1[y]], ignore_index=True)
+    # print(da4)
+    da.drop(index=da4['index'], inplace=True)
+    return da
+
+
+def demand_reduct_3():
+    for x in range(1, max_day):
+        data = pd.DataFrame()
+        try:
+            da0 = pd.read_csv('./data/demand_data_2/%02d.csv' % x,
+                              names=['id', 'empty', 'gps_time', 'lon', 'lat', 'od'])
+            data = data.append(da0[da0['od'] == 'qo'], ignore_index=True)
+
+            # da1 = pd.read_csv('./data/demand_data_2/%02d.csv' % (x + 1),
+            #                   names=['id', 'empty', 'gps_time', 'lon', 'lat', 'od'])
+            # data = data.append(da1[da1['od'] == 'qd'], ignore_index=True)
+            # data['gps_time'] = pd.to_datetime(data['gps_time'], format='%Y-%m-%d %H:%M:%S')
+            da = data.groupby('id').apply(_demand_reduct_3)
+        except Exception as result:
+            print(result)
+            continue
+        da = da.append(da0[da0['od'].isnull()], ignore_index=True)
+        da.to_csv('./data/demand_data_3/%02d.csv' % x, mode='a', index=0, header=0)
+
+
+def _demand_reduct_3(da):
+    if len(da) == 2:
+        gap_time = da['gps_time'] - da['gps_time'].shift(1)
+        x = gap_time[-1:] > '00:02:00'
+        y = gap_time[-1:] < '06:00:00'
+        if x is True and y is True:
+            print(da)
+            return da
+
+
+def demand_reduct_4():
+    for x in range(1, max_day):
+        try:
+            data = pd.read_csv('./data/demand_data_3/%02d.csv' % x,
+                               names=['id', 'empty', 'gps_time', 'lon', 'lat', 'od'])
+        except Exception as result:
+            print(result)
+            continue
+        del data['od']
+        data.sort_values('gps_time', inplace=True)
+        da = data.groupby('id').apply(_demand_reduct_4)
+        da.to_csv('./data/demand_data_4/%02d.csv' % x, mode='a', index=0, header=0)
+
+
+def _demand_reduct_4(data):
+    # print(data)
+    da0 = data[data['empty'] == 0]
+    da1 = data[data['empty'] == 1]
+    da0 = da0.reset_index(drop=True)
+    da1 = da1.reset_index(drop=True)
+    da0.rename(columns={'empty': 'empty_0', 'gps_time': 'gps_time_0', 'lon': 'lon_0', 'lat': 'lat_0'}, inplace=True)
+    da1.rename(columns={'empty': 'empty_1', 'gps_time': 'gps_time_1', 'lon': 'lon_1', 'lat': 'lat_1'}, inplace=True)
+    da = pd.concat([da0, da1], axis=1, ignore_index=True, sort=False)
+    return da
+
+
+def demand_reduct_5():
+    for x in range(1, max_day):
+        try:
+            data = pd.read_csv('./data/demand_data_4/%02d.csv' % x,
+                               names=['id', 'empty_0', 'gps_time_0', 'lon_0', 'lat_0',
+                                      'id_1', 'empty_1', 'gps_time_1', 'lon_1', 'lat_1'])
+        except Exception as result:
+            print(result)
+            continue
+        del data['id_1']
+        data.sort_values('gps_time_0', inplace=True)
+        data.to_csv('./data/demand_data_5/%02d.csv' % x, index=0)
+        
 
 if __name__ == '__main__':
     pass
-    demand_reduct(1)
+    demand_reduct_5()
     # demand()
