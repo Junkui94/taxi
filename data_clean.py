@@ -53,6 +53,42 @@ types_drop = {'missing': 'data.dropna(inplace=True)',
 
 # ====================================================================
 
+def data_clean(types, size=None, day=None, hour=None, minute=None):
+    """
+
+    :param types:
+    :param size:
+    :param day:
+    :param hour:
+    :param minute:
+    :return:
+    """
+
+    _data_clean(types=types, size=size, day=day, hour=hour, minute=minute)
+    print('%s已完成！' % types)
+
+
+def _data_clean(types, size=None, day=None, hour=None, minute=None):
+    """
+
+    :param types:
+    :param size:
+    :param day:
+    :param hour:
+    :param minute:
+    :return:
+    """
+    types_choice = {'search': types_search[types], 'drop': types_drop[types]}
+    if size != 'all':
+        _data_clean_core(types, day, hour, minute, types_choice)
+    else:
+        for x in range(1, max_day):
+            if x == 17:
+                continue
+            for y in range(0, max_hour):
+                for z in range(0, max_minute):
+                    _data_clean_core(types, day=x, hour=y, minute=z, types_choice=types_choice)
+
 
 def _data_clean_core(types, day, hour, minute, types_choice):
     """
@@ -82,43 +118,6 @@ def _data_clean_core(types, day, hour, minute, types_choice):
         file.close()
 
 
-def _data_clean(types, size=None, day=None, hour=None, minute=None):
-    """
-
-    :param types:
-    :param size:
-    :param day:
-    :param hour:
-    :param minute:
-    :return:
-    """
-    types_choice = {'search': types_search[types], 'drop': types_drop[types]}
-    if size != 'all':
-        _data_clean_core(types, day, hour, minute, types_choice)
-    else:
-        for x in range(1, max_day):
-            if x == 17:
-                continue
-            for y in range(0, max_hour):
-                for z in range(0, max_minute):
-                    _data_clean_core(types, day=x, hour=y, minute=z, types_choice=types_choice)
-
-
-def data_clean(types, size=None, day=None, hour=None, minute=None):
-    """
-
-    :param types:
-    :param size:
-    :param day:
-    :param hour:
-    :param minute:
-    :return:
-    """
-
-    _data_clean(types=types, size=size, day=day, hour=hour, minute=minute)
-    print('%s已完成！' % types)
-
-
 def data_error_delete(types):
     """
 
@@ -141,47 +140,17 @@ def data_error_delete(types):
 
 # =========================================================================
 
-def _drift_judge(df):
+def drift_error(day, hour, minute, step_size):
     """
 
-    :param df:
+    :param day:
+    :param hour:
+    :param minute:
+    :param step_size:
     :return:
     """
-    if len(df) > 1:
-        gps_time = pd.Series(df['gps_time'])
-        point = pd.Series(df['point'])
-        """
-        比较（该法效率不高）
-        time_gap = (df['gps_time']-df['gps_time'].shift(1))
-        print(time_gap)
-        """
-        time_gap = map(lambda x, y: datetime.timedelta.total_seconds(y - x), gps_time[:-1:], gps_time[1::])
-        dis = map(lambda x, y: distance(y, x).meters, point[:-1:], point[1::])
-        speed = list(map(lambda x, y: (y / x) > 180, time_gap, dis)) + [False]
-        w = 0
-        for z in range(len(speed)):
-            if speed[z] is True and w == 0:
-                w = 1
-                speed[z] = False
-            elif speed[z] is True and w == 1:
-                speed[z] = True
-            elif speed[z] is False and w == 1:
-                w = 0
-        df[speed].to_csv('%s/drift_data.txt' % path_error_data, mode='a', header=0, index=0, sep="|")
-
-
-def _drift_error_core(data):
-    """
-
-    :param data:
-    :return:
-    """
-    time_1 = time.time()
-    data.drop_duplicates(['id', 'gps_time'], keep='first', inplace=True)
-    data['point'] = data.apply(lambda x: (float(x['lat']), float(x['lon'])), axis=1)
-    data.groupby('id').apply(_drift_judge)
-    time_2 = time.time()
-    print('用时:%s' % (time_2 - time_1))
+    _drift_error(day, hour, minute, step_size)
+    print("drift_error处理已完成")
 
 
 def _drift_error(day, hour, minute, step_size):
@@ -225,17 +194,47 @@ def _drift_error(day, hour, minute, step_size):
                     file.close()
 
 
-def drift_error(day, hour, minute, step_size):
+def _drift_error_core(data):
     """
 
-    :param day:
-    :param hour:
-    :param minute:
-    :param step_size:
+    :param data:
     :return:
     """
-    _drift_error(day, hour, minute, step_size)
-    print("drift_error处理已完成")
+    time_1 = time.time()
+    data.drop_duplicates(['id', 'gps_time'], keep='first', inplace=True)
+    data['point'] = data.apply(lambda x: (float(x['lat']), float(x['lon'])), axis=1)
+    data.groupby('id').apply(_drift_judge)
+    time_2 = time.time()
+    print('用时:%s' % (time_2 - time_1))
+
+
+def _drift_judge(df):
+    """
+
+    :param df:
+    :return:
+    """
+    if len(df) > 1:
+        gps_time = pd.Series(df['gps_time'])
+        point = pd.Series(df['point'])
+        """
+        比较（该法效率不高）
+        time_gap = (df['gps_time']-df['gps_time'].shift(1))
+        print(time_gap)
+        """
+        time_gap = map(lambda x, y: datetime.timedelta.total_seconds(y - x), gps_time[:-1:], gps_time[1::])
+        dis = map(lambda x, y: distance(y, x).meters, point[:-1:], point[1::])
+        speed = list(map(lambda x, y: (y / x) > 180, time_gap, dis)) + [False]
+        w = 0
+        for z in range(len(speed)):
+            if speed[z] is True and w == 0:
+                w = 1
+                speed[z] = False
+            elif speed[z] is True and w == 1:
+                speed[z] = True
+            elif speed[z] is False and w == 1:
+                w = 0
+        df[speed].to_csv('%s/drift_data.txt' % path_error_data, mode='a', header=0, index=0, sep="|")
 
 
 def data_drift_delete():
@@ -263,6 +262,24 @@ def _drift_delete(df0):
 
 # =========================================================================
 
+def data_reduce():
+    """
+    所有数据精简
+    :return:
+    """
+    for x in range(1, max_day):
+        if x == 17:
+            continue
+        for y in range(0, max_hour):
+            path02 = rd.txt_path(x, y, 1)
+            if not os.path.exists(path02):
+                os.makedirs(path02)
+            for z in range(0, max_minute):
+                pt_name02 = rd.path_name(x, y, z, types=1)
+                if not os.path.exists(pt_name02):
+                    _data_reduce_core(x, y, z, pt_name02)
+    print('已有数据精简完成！')
+
 
 def _data_reduce_core(day, hour, minute, pt_name02):
     """
@@ -284,25 +301,6 @@ def _data_reduce_core(day, hour, minute, pt_name02):
         file.write('%s ：%s\n' % (rd.txt_name(day, hour, minute), result))
         file.close()
         print('%s ：%s' % (rd.txt_name(day, hour, minute), result))
-
-
-def data_reduce():
-    """
-    所有数据精简
-    :return:
-    """
-    for x in range(1, max_day):
-        if x == 17:
-            continue
-        for y in range(0, max_hour):
-            path02 = rd.txt_path(x, y, 1)
-            if not os.path.exists(path02):
-                os.makedirs(path02)
-            for z in range(0, max_minute):
-                pt_name02 = rd.path_name(x, y, z, types=1)
-                if not os.path.exists(pt_name02):
-                    _data_reduce_core(x, y, z, pt_name02)
-    print('已有数据精简完成！')
 
 
 # =============================================================================

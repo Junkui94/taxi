@@ -18,6 +18,8 @@ if not os.path.exists(path_data):
 mi.init_log()
 
 
+# ========================================================================
+
 def demand(day=1, hour=0, minute=0):
     for x in range(day, max_day):
         if x == 17:
@@ -38,7 +40,7 @@ def demand(day=1, hour=0, minute=0):
             data.sort_values('gps_time', inplace=True)
             da = data.groupby('id').apply(_demand_state)
             # print(da)
-            da.to_csv('./data/demand_data/%02d.csv' % x, mode='a', index=0, header=0)
+            da.to_csv('./data/demand_data_0/%02d.csv' % x, mode='a', index=0, header=0)
             del da
 
 
@@ -55,6 +57,8 @@ def _demand_state(data):
         da4 = data.tail(1)
         return pd.concat([da3, da4], ignore_index=True)
 
+
+# ========================================================================
 
 def demand_reduct_1():
     for x in range(1, max_day):
@@ -79,6 +83,8 @@ def _demand_reduct_1(data):
         da.sort_values('gps_time', inplace=True)
         return da
 
+
+# ========================================================================
 
 def demand_reduct_2():
     for x in range(1, max_day):
@@ -119,6 +125,7 @@ def _demand_reduct_2(da):
     return da
 
 
+# ========================================================================
 def demand_reduct_3():
     for x in range(1, max_day):
         data = pd.DataFrame()
@@ -149,6 +156,8 @@ def _demand_reduct_3(da):
             return da
 
 
+# ========================================================================
+
 def demand_reduct_4():
     for x in range(1, max_day):
         try:
@@ -175,6 +184,8 @@ def _demand_reduct_4(data):
     return da
 
 
+# ========================================================================
+
 def demand_reduct_5():
     for x in range(1, max_day):
         try:
@@ -186,10 +197,56 @@ def demand_reduct_5():
             continue
         del data['id_1']
         data.sort_values('gps_time_0', inplace=True)
-        data.to_csv('./data/demand_data_5/%02d.csv' % x, index=0)
-        
+        data = data.reset_index(drop=True)
+        data.to_csv('./data/demand_data_5/%02d.csv' % x)
 
+
+# ========================================================================
+def demand_reduct_6(day):
+    data1 = pd.read_csv('./data/demand_data_5.5/%02d-0.csv' % day)
+    data2 = pd.read_csv('./data/demand_data_5.5/%02d-1.csv' % day)
+    data1.sort_values('field_1', inplace=True)
+    data2.sort_values('field_1', inplace=True)
+    data3 = data1[['area_id', 'field_1']].copy()
+    data4 = data2[['area_id', 'field_1']].copy()
+    data3.rename(columns={'area_id': 'area_id_0'}, inplace=True)
+    data4.rename(columns={'area_id': 'area_id_1'}, inplace=True)
+    data = pd.merge(data3, data4, on='field_1')
+    data = pd.merge(data1, data, on='field_1')
+    data.dropna(inplace=True)
+    del data['area_id']
+    data.to_csv('./data/demand_data_6/%02d.csv' % day, index=0)
+
+
+# ========================================================================
+def demand_table(day, hour, minute):
+    data = pd.read_csv('./data/demand_data_6/%02d.csv' % day)
+    # data['gps_time_0'] = pd.to_datetime(data['gps_time_0'], format='%Y-%m-%d %H:%M:%S')
+    start_time = '2016-03-%02d %02d:%02d:00' % (day, hour, minute)
+    end_time = '2016-03-%02d %02d:%02d:00' % (day, hour, minute + 5)
+    ids = data['gps_time_0'].apply(lambda x: start_time <= x < end_time)
+    # print(data[ids]['gps_time_0'])
+    da = data[ids].copy()
+    count = da.groupby(['area_id_0', 'area_id_1']).apply(_demand_count)
+    count.to_csv('./data/demand_data_fin/%02d%02d%02d.csv' % (day, hour, minute))
+
+
+def _demand_count(da):
+    return len(da)
+
+
+# ========================================================================
+
+def all_demand():
+    for x in range(1, max_day):
+        if x == 17:
+            continue
+        for y in range(0, max_hour):
+            for z in range(0, max_minute, 5):
+                demand_table(x, y, z)
+
+
+# ========================================================================
 if __name__ == '__main__':
     pass
-    demand_reduct_5()
-    # demand()
+    all_demand()

@@ -1,6 +1,6 @@
-import os
 import pandas as pd
 import main as mi
+import numpy as np
 
 # ==========================判断数据文件路径是否存在================
 
@@ -17,10 +17,12 @@ path_a = mi.path0  # 选择源数据路径
 # path_a = mi.path5  # 统计
 path_b = mi.path1  # 选择精简数据路径
 
-isExists = os.path.exists(path_b)
-if not isExists:
-    print("源数据文件不存在")
-    exit()
+
+# import os
+# isExists = os.path.exists(path_b)
+# if not isExists:
+#     print("源数据文件不存在")
+#     exit()
 
 
 # ================================================================
@@ -98,15 +100,31 @@ def read_txt(day, hour, minute, types=0):
     columns = mi.columns
     if types != 0:
         columns = mi.reduction_columns
-    data = pd.read_csv(pt_name0, delimiter='|', names=columns, encoding='iso-8859-1', low_memory=False)
-
-    return data
+    try:
+        data = pd.read_csv(pt_name0, delimiter='|', names=columns,
+                           encoding='iso-8859-1', low_memory=False)
+        return data
+    except Exception as result:
+        print(result)
 
 
 # ================================================================
 
+def read_demand(day, hour, minute):
+    area = 201
+    da = pd.read_csv('./data/demand_data_fin/%02d%02d%02d.csv' % (day, hour, minute),
+                     names=['area_id_0', 'area_id_1', 'num'])
+    da2 = np.zeros(shape=[201, 201])
+
+    for x in da.index:
+        da2[da['area_id_0'][x]][da['area_id_1'][x]]= da['num'][x]
+        # print(da2[da['area_id_0'][x]][da['area_id_1'][x]])
+    # print(da2)
+    return da2
 
 if __name__ == '__main__':
     pass
-    da = read_txt(1, 10, 6, 1)
+    # da = read_txt(1, 10, 6, 1)
+    # print(da)
+    da = read_demand(1, 0, 0)
     print(da)
